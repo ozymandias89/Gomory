@@ -194,8 +194,11 @@ int main(int argc, char const *argv[]) {
 			master->save(env, lp);
 
 			cout << endl << endl << endl << endl << endl;
+			cout << "iteration number " << iter << endl;
+			cout << "constraints added " << num_constraint - Num_original_constraints << endl;
 
 			iter++;
+			
 
 		} while (1);
 
