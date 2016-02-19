@@ -66,6 +66,8 @@ std::vector<std::vector<double> > A;
 std::vector<double> b;
 
 
+
+
 /**
  Method that load from file the problem (for example of format file see folder data)
  @param  (ifstream &) , object ifstream

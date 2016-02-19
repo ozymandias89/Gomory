@@ -51,8 +51,8 @@ int main(int argc, char const *argv[]) {
 	} else {
 		cerr << "Parameters error!!!!!" << endl;
 		cout << "The correct syntax is:" << endl
-				<< "./main (string)'path_name_file' (bool)debug"
-				<< endl << "or (to generate random matrix)" << endl
+				<< "./main (string)'path_name_file' (bool)debug" << endl
+				<< "or (to generate random matrix)" << endl
 				<< "./main (int)number_constraints (int)limit_number_coefficients generate (bool)debug"
 				<< endl;
 		exit(1);
@@ -95,114 +95,108 @@ int main(int argc, char const *argv[]) {
 				throw std::runtime_error("Timeout!");
 			}
 
-			int index=master->solve(env, lp);
+			master->solve(env, lp);
+
+			printf("\nGMI cuts: ");
+			master->save(env, lp);
+
+			status = 0;
+			int jj;
+			double f0, fj, coeff;
+			int r, j;
+			double a[Num_original_variables][N];
+			double Aprime[Num_original_variables][num_constraint];
+			double gamma[Num_original_variables][N];
+
+			int var = N;
+			int con = num_constraint;
+
+			for (jj = 0; jj < Num_original_variables; jj++) {
+
+				double fraction = fabs(
+						(master->varVals[jj]) - (round(master->varVals[jj])));
+
+				if (fraction < 10e-6)
+					continue;
+
+				//basic integer non feasible variables
+				//determine the row of the current GMI cut
+				status = CPXbinvacol(env, lp, jj, Aprime[jj]);
+
+				//find the row of basic jj
+
+				for (r = 0; r < num_constraint; r++) {
+					if (fabs(Aprime[jj][r] - 1.0) < 1e-6L) {
+						break;
+					}
+				}
+//
+				printf(": row %d ", r);
+				f0 = master->varVals[jj] - floor(master->varVals[jj]);
+				status = CPXbinvarow(env, lp, r, a[jj]);
+
+				for (j = 0; j < N; j++) {
+
+					if (j >= Num_original_variables) {
+						if (a[jj][j] >= 0.0) {
+							coeff = a[jj][j] / f0;
+						} else {
+							coeff = -a[jj][j] / (1 - f0);
+						}
+					} else {
+						fj = a[jj][j] - floor(a[jj][j]);
+						if (fj <= f0) {
+							coeff = fj / f0;
+						} else {
+							coeff = (1 - fj) / (1 - f0);
+						}
+					}
+
+					gamma[jj][j] = coeff;
+				}
+
+			}
+
+			printf("\n ******* ADDING CUTS (GMI): *******\n");
+
+			for (jj = 0; jj < Num_original_variables; jj++) {
+
+				double fraction = fabs(
+						(master->varVals[jj]) - (round(master->varVals[jj])));
+
+				if (fraction < 10e-6)
+					continue;
+
+				if (verbose) {
+					cout << endl;
+					cout << "Aprime: ";
+					for (int i = 0; i < con; i++)
+						cout << " " << Aprime[jj][i];
+					cout << endl;
+
+					cout << "a: ";
+					for (int i = 0; i < var; i++) {
+						cout << " " << a[jj][i];
+					}
+					cout << endl;
+
+					cout << "gamma: ";
+					for (int i = 0; i < var; i++) {
+						cout << " " << gamma[jj][i];
+					}
+					cout << endl;
+				}
+
+				master->add_constraint_R(env, lp, gamma[jj], var);
+
+			}
 
 			master->save(env, lp);
 
-			exit(0);
-//			master->add_constraint_R(env, lp);
-//			master->save(env, lp);
-
-
-
-
-//			int add_GMI_cuts ( void ) {
-//				printf("\nGMI cuts: ");
-//				status = 0;
-//				//coefficenti della x
-//				double a[cutinfo.numcols];
-//				int jj;
-//				double f0, fj, coeff;
-//				int r,j;
-//
-//				//ciclo su tutte le varibili
-//				for ( jj = 0; jj < cutinfo.numcols; jj++ ) {
-//					//se la viariabile è continua o intera non faccio nulla e passo alla successiva
-//					//per capire se una variabile è di base o meno il test sarebbe
-//					if ( cutinfo.type[jj] == CPX_CONTINUOUS ) continue;
-//					if ( cutinfo.feas[jj] == CPX_INTEGER_FEASIBLE ) continue; //note: non basic integer vars are int_feasible
-//																				  //printf("GMI for var %s",cutinfo.colname[jj]);Getchar();
-//					//basic integer non feasible variables
-//					//determine the row of the current GMI cut
-//					status = CPXbinvacol(env, nodelp, jj, cutinfo.Aprime[jj]);
-//					//find the row of basic jj
-//					for ( r = 0; r < cutinfo.numrows; r++ ) {
-//						if ( fabs(cutinfo.Aprime[jj][r] - 1.0) < L_EPS_PREC ) {
-//							break;
-//						}
-//					}
-//					printf(": row %d (%s) ",r,cutinfo.colname[jj]);
-//					f0 = cutinfo.x[jj] - floor(cutinfo.x[jj]);
-//					status = CPXbinvarow(env, nodelp, r, a);
-//					for ( j = 0; j < cutinfo.numcols; j++ ) {
-//						//if ( cutinfo.basic[j] ) {
-//						//  coeff = 0.0;
-//						//} else {
-//						if ( cutinfo.type[j] == CPX_CONTINUOUS ) {
-//							if ( a[j] >= 0.0 ) {
-//								coeff = a[j] / f0;
-//							} else {
-//								coeff = - a[j] / (1-f0);
-//							}
-//						} else { //integer variable
-//							//printf("a: %lf; a_: %lf; f: %lf;\n",a[j],floor(a[j]),a[j] - floor(a[j]));fflush(stdout);
-//							fj = a[j] - floor(a[j]);
-//							if ( fj <= f0 ) {
-//								coeff = fj / f0;
-//							} else {
-//								coeff = (1-fj) / (1-f0);
-//							}
-//						}
-//						//}
-//						cutinfo.ind[j] = j;
-//						cutinfo.coeff[j] = coeff;
-//					}
-//
-//					printf("\n ******* ADDING CUT %d (GMI): *******\n",++numCutsAdded);
-//					for (j=0; j<cutinfo.numcols; j++) {
-//						printf("%9s",cutinfo.colname[cutinfo.ind[j]]);
-//					}
-//					printf("\n");
-//					for (j=0; j<cutinfo.numcols; j++) {
-//						printf("%9.4lf",cutinfo.coeff[j]);
-//					}
-//					printf("\n");
-//					// add cut for jj's row
-//					/*if (  false
-//					 //||  !strcmp(cutinfo.colname[jj],"x00")
-//					 //||  !strcmp(cutinfo.colname[jj],"x01")
-//					 ||  !strcmp(cutinfo.colname[jj],"x02")
-//					 ||  !strcmp(cutinfo.colname[jj],"x37")
-//					 )  //luino*/
-//					status = CPXcutcallbackadd (env, gbl_cbdata, gbl_wherefrom, cutinfo.numcols, 1 - L_EPS_TOL, 'G',
-//							cutinfo.ind, cutinfo.coeff, 0);
-//					if ( status ) {
-//						fprintf (stderr, "Failed to add cut.\n");
-//						status = L_ERROR_SEVERE;
-//						goto TERMINATE;
-//					}
-//				}
-//
-//				TERMINATE:
-//				return status;
-//
-//			}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+			cout << endl << endl << endl << endl << endl;
 
 			iter++;
+
 		} while (1);
 
 	} catch (std::exception& e) {

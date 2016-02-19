@@ -47,14 +47,14 @@ public:
 	int select_fractionar_var();
 
 
-	int solve(CEnv env, Prob lp);
+	void solve(CEnv env, Prob lp);
 	/**
 	 Method that add constraints in set R to the first problem.
-	 @param  (CEnv env, Prob lp, std::set<std::vector<double> > R, long aggressivity) environment of the problem,
-	 problem ,set R and aggressivity filter
+	 @param  (CEnv env, Prob lp, double *gamma) environment of the problem,
+	 problem , array gamma
 	 @return void
 	 */
-//	void add_constraint_R(CEnv env, Prob lp, std::set<std::vector<double> > R, long aggressivity);
+	void add_constraint_R(CEnv env, Prob lp, double* gamma, int var);
 
 	void save (CEnv env, Prob lp);
 

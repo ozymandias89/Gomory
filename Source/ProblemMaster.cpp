@@ -130,7 +130,7 @@ int ProblemMaster::select_fractionar_var() {
 	return index;
 }
 
-int ProblemMaster::solve(CEnv env, Prob lp) {
+void ProblemMaster::solve(CEnv env, Prob lp) {
 
 	// --------------------------------------------------
 	// 2. solve linear problem
@@ -170,145 +170,84 @@ int ProblemMaster::solve(CEnv env, Prob lp) {
 	// --------------------------------------------------------
 	// 7. if x solution aren't integer create P1 and P2 problem
 	// --------------------------------------------------------
-	if (index != -1) {
-
-		if (verbose) {
-			cout << endl << "More fractional variable choose " << varVals[index]
-					<< endl;
-
-			cout << "Index of variable choose: " << index << endl;
-		}
-
-
-	} else {
+	if (index == -1) {
 		cout << " Iteration number: " << iter << endl;
 		throw std::runtime_error(
 				" The last solution is the best integer solution. STOP CONDITION STEP 4 ");
+
 	}
-	return index;
+
 
 }
 
-//void ProblemMaster::add_constraint_R(CEnv env, Prob lp,
-//
-//		std::set<std::vector<double> > R, long aggressivity) {
-//
-//	//change sign matrix A
-//	change_sign_A();
-//
-//	static const char* varType = NULL;
-//	double obj = 0.0;
-//	double lb = 0.0;
-//	double ub = CPX_INFBOUND;
-//	char sense = 'E';
-//	int matbeg = 0;
-//	int nzcnt = 0;
-//
-//	std::vector<int> idx;
-//	std::vector<double> coef;
-//
-//	std::vector<double> y_tilde;
-//	int iterator = N;
-//
-//	double sum = 0;
-//	//for each element in a set insert a new constraint
-//	for (std::set<std::vector<double> >::iterator it = R.begin(); it != R.end();
-//			++it) {
-//
-//		y_tilde = *it;
-//
-//		double M = 0;
-//		double m = CPX_INFBOUND;
-//
-//		for (int i = 0; i < iterator; i++) {
-//
-//			if (fabs(y_tilde[i]) != 0) {
-//				if ((fabs(y_tilde[i])) > M) {
-//					M = (fabs(y_tilde[i]));
-//				}
-//				if ((fabs(y_tilde[i])) < m) {
-//					m = (fabs(y_tilde[i]));
-//				}
-//
-//			}
-//		}
-//
-//		double aggress = (M/m);
-//
-//		if (verbose)
-//		cout<< endl << "AGGRESSIVITY: " << M / m << endl;
-//
-//		if ( aggress < aggressivity ){
-//			//cout<< endl << "AGGRESSIVITY: " << M / m << "AGGIUNTO" << endl;
-//
-//		sum = 0;
-//		nzcnt = 0;
-//
-//		// add Slack variables
-//		snprintf(name, NAME_SIZE, "S_%i", slack);
-//		slack++;
-//		char* varName = (char*) (&name[0]);
-//		CHECKED_CPX_CALL(CPXnewcols, env, lp, 1, &obj, &lb, &ub, varType,
-//				&varName);
-//
-//		//-S
-//		coef.push_back(-1);
-//		idx.push_back(N);
-//		nzcnt++;
-//
-//		//a_T * x
-//		for (int i = 0; i < iterator; i++) {
-//
-//			if (y_tilde[i] != 0) {
-//				sum += (y_tilde[i] * int_var[i]);
-//				//	cout << "###### " << y_tilde[i] << "   " << int_var[i]  << endl;
-//
-//				coef.push_back(y_tilde[i]);
-//				idx.push_back(i);
-//				nzcnt++;
-//			}
-//		}
-//
-//		//beta
-//		sum = -sum;
-//		double rhs = y_tilde[iterator];
-//		sum += y_tilde[iterator];
-//
-//		sum = -sum;
-//
-//		cout << "SLACK: " << sum << endl;
-//		if (sum < -1.e-4){
-//			cout << "Negative Slack!" << endl;
-//			exit(1);
-//		}
-//
-//		num_constraint++;
-//		N++;
-//
-//		//add 0 to c
-//		c.push_back(0);
-//
-//		//extend A matrix
-//		A.resize(num_constraint);
-//		for (int i = 0; i < num_constraint; i++)
-//			A[i].resize(N);
-//
-//		for (int i = 0; i < iterator; i++)
-//			A[(num_constraint - 1)][i] = y_tilde[i];
-//
-//		A[(num_constraint - 1)][N - 1] = -1;
-//
-//		CHECKED_CPX_CALL(CPXaddrows, env, lp, 0, 1, nzcnt, &rhs, &sense,
-//				&matbeg, &idx[0], &coef[0], 0, 0);
-//
-//		b.push_back(rhs);
-//
-//		idx.clear();
-//		coef.clear();
-//	}
-//	}
-//
-//}
+void ProblemMaster::add_constraint_R(CEnv env, Prob lp, double* gamma, int var) {
+
+	static const char* varType = NULL;
+	double obj = 0.0;
+	double lb = 0.0;
+	double ub = CPX_INFBOUND;
+	char sense = 'E';
+	int matbeg = 0;
+	int nzcnt = 0;
+
+	std::vector<int> idx;
+	std::vector<double> coef;
+
+	// add Slack variables
+	snprintf(name, NAME_SIZE, "S_%i", slack);
+	slack++;
+	char* varName = (char*) (&name[0]);
+	CHECKED_CPX_CALL(CPXnewcols, env, lp, 1, &obj, &lb, &ub, varType, &varName);
+
+	//-S
+	coef.push_back(-1);
+	idx.push_back(N);
+	nzcnt++;
+
+	//a_T * x
+	for (int i = 0; i < var; i++) {
+
+		if (gamma[i] != 0) {
+			coef.push_back(gamma[i]);
+			idx.push_back(i);
+			nzcnt++;
+		}
+	}
+
+	double rhs = 1;
+
+	num_constraint++;
+	N++;
+
+	//add 0 to c
+	c.push_back(0);
+
+
+
+	//extend A matrix
+	A.resize(num_constraint);
+	for (int i = 0; i < num_constraint; i++)
+		A[i].resize(N);
+
+	for (int i = 0; i < N; i++)
+		A[(num_constraint - 1)][i]=0;
+
+	for (int i = 0; i < var; i++)
+		A[(num_constraint - 1)][i] = gamma[i];
+
+
+	A[(num_constraint - 1)][N - 1] = -1;
+
+
+	CHECKED_CPX_CALL(CPXaddrows, env, lp, 0, 1, nzcnt, &rhs, &sense, &matbeg,
+			&idx[0], &coef[0], 0, 0);
+
+	b.push_back(rhs);
+
+
+
+
+}
 
 void ProblemMaster::save(CEnv env, Prob lp) {
 
